@@ -3,6 +3,7 @@ import os
 
 # 📁 경로 정의 (C:\Users\{user}\Documents\telofarm\telofarmer\...)
 USER_DOCS = os.path.join(os.path.expanduser("~"), "Documents", "telofarm", "telofarmer")
+
 DATA_DIR = os.path.join(USER_DOCS, "data")
 LOG_DIR = os.path.join(USER_DOCS, "log")
 SYSLOG_DIR = os.path.join(USER_DOCS, "systemlog")
