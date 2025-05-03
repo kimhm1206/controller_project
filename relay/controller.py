@@ -85,7 +85,16 @@ def tcpcontrol_multi(port_dict: dict, test_mode: bool = False) -> int:
             setup_rpi_gpio()
             for category, changes in port_dict.items():
                 for ch, mode in changes.items():
-                    gpio_control(ch, mode)
+                    port = relay_state[category][ch]["port"]
+                    gpio_ch = None
+                    for k, v in RASPBERRY_PI_PINS.items():
+                        if int(k.replace("ch", "")) == port:
+                            gpio_ch = k
+                            break
+                    if gpio_ch is None:
+                        print(f"❌ [GPIO] 포트 {port}에 해당하는 GPIO 핀 매핑 실패")
+                        continue
+                    gpio_control(gpio_ch, mode)
 
             for category in relay_state:
                 for ch_info in relay_state[category].values():
@@ -156,8 +165,17 @@ def emergency_shutdown(mode: str, test_mode: bool = False):
 
     if is_raspberry_pi():
         setup_rpi_gpio()
-        for ch in relay_state.get(mode, {}):
-            gpio_control(ch, "off")
+        for ch, ch_info in relay_state.get(mode, {}).items():
+            port = ch_info["port"]
+            gpio_ch = None
+            for k, v in RASPBERRY_PI_PINS.items():
+                if int(k.replace("ch", "")) == port:
+                    gpio_ch = k
+                    break
+            if gpio_ch is None:
+                print(f"❌ [GPIO] 포트 {port} → ch 매핑 실패 (긴급 OFF)")
+                continue
+            gpio_control(gpio_ch, "off")
 
         for category in relay_state:
             for ch_info in relay_state[category].values():
