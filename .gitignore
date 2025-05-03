@@ -1,0 +1,28 @@
+# 가상환경 디렉토리 무시
+venv/
+.env/
+control/
+telofarmer/
+# PyInstaller 빌드 파일
+build/
+dist/
+__pycache__/
+*.spec
+
+# Python 캐시
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# IDE 설정 (VSCode, PyCharm 등)
+.vscode/
+.idea/
+
+# 로그/환경 설정 파일
+*.log
+*.env
+.DS_Store
+
+# 기타 시스템 파일
+Thumbs.db
