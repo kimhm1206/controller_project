@@ -146,6 +146,7 @@ def setup_combined_schedules():
     if not ledbool:
         emergency_shutdown("led",test_mode)
 
+
     for time_str, job_list in job_group.items():
         try:
             hour, minute = map(int, time_str.split(":"))
