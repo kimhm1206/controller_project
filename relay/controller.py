@@ -18,9 +18,9 @@ def set_relay_state(state):
 
 # Raspberry Pi 전용 GPIO 핀 매핑 (BCM 기준)
 RASPBERRY_PI_PINS = {
-    "ch1": 26,
-    "ch2": 20,
-    "ch3": 21,
+    "ch0": 25,
+    "ch1": 28,
+    "ch2": 29,
 }
 
 def is_raspberry_pi():
@@ -28,17 +28,21 @@ def is_raspberry_pi():
 
 def setup_rpi_gpio():
     import RPi.GPIO as GPIO
+    print("🔧 [GPIO] 설정 시작 (BCM 모드)")
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
-    for pin in RASPBERRY_PI_PINS.values():
+    for ch, pin in RASPBERRY_PI_PINS.items():
         GPIO.setup(pin, GPIO.OUT)
-        GPIO.output(pin, GPIO.HIGH)  # 기본 OFF (LOW가 ON이기 때문)
+        GPIO.output(pin, GPIO.HIGH)
+        print(f"🔌 [GPIO] {ch} → 핀 {pin} 초기화 완료 (OFF)")
 
 def gpio_control(ch, mode):
     import RPi.GPIO as GPIO
     pin = RASPBERRY_PI_PINS.get(ch)
     if pin is None:
-        raise ValueError(f"Unknown channel: {ch}")
+        print(f"❌ [GPIO] Unknown channel: {ch} (정의되지 않은 핀)")
+        return
+    print(f"➡️ [GPIO] {ch} 핀({pin}) → {mode.upper()}")
     GPIO.output(pin, GPIO.LOW if mode == "on" else GPIO.HIGH)
 
 def tcpcontrol_multi(port_dict: dict, test_mode: bool = False) -> int:
