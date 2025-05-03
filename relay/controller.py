@@ -17,9 +17,9 @@ gpio_handle = None
 
 # Raspberry Pi 전용 GPIO 핀 매핑 (BCM 기준)
 RASPBERRY_PI_PINS = {
-    "ch0": 25,
-    "ch1": 28,
-    "ch2": 29,
+    "ch0": 26,  # BCM
+    "ch1": 20,
+    "ch2": 21,
 }
 
 
