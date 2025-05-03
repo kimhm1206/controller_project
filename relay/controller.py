@@ -12,9 +12,8 @@ TCP_PORT = 502
 relay_state = None
 relay_lock = threading.Lock()
 
-def set_relay_state(state):
-    global relay_state
-    relay_state = state
+# lgpio 핸들
+gpio_handle = None
 
 # Raspberry Pi 전용 GPIO 핀 매핑 (BCM 기준)
 RASPBERRY_PI_PINS = {
@@ -23,27 +22,45 @@ RASPBERRY_PI_PINS = {
     "ch2": 29,
 }
 
+
+def set_relay_state(state):
+    global relay_state
+    relay_state = state
+
+
 def is_raspberry_pi():
     return platform.system() == "Linux"
 
+
 def setup_rpi_gpio():
-    import RPi.GPIO as GPIO
-    print("🔧 [GPIO] 설정 시작 (BCM 모드)")
-    GPIO.setwarnings(False)
-    GPIO.setmode(GPIO.BCM)
+    global gpio_handle
+    import lgpio
+
+    if gpio_handle is not None:
+        return
+
+    gpio_handle = lgpio.gpiochip_open(0)
+    print("🔧 [lgpio] 설정 시작 (gpiochip 0)")
     for ch, pin in RASPBERRY_PI_PINS.items():
-        GPIO.setup(pin, GPIO.OUT)
-        GPIO.output(pin, GPIO.HIGH)
-        print(f"🔌 [GPIO] {ch} → 핀 {pin} 초기화 완료 (OFF)")
+        lgpio.gpio_claim_output(gpio_handle, pin)
+        lgpio.gpio_write(gpio_handle, pin, 1)
+        print(f"🔌 [lgpio] {ch} → 핀 {pin} 초기화 완료 (OFF)")
+
 
 def gpio_control(ch, mode):
-    import RPi.GPIO as GPIO
+    import lgpio
     pin = RASPBERRY_PI_PINS.get(ch)
     if pin is None:
-        print(f"❌ [GPIO] Unknown channel: {ch} (정의되지 않은 핀)")
+        print(f"❌ [lgpio] Unknown channel: {ch} (정의되지 않은 핀)")
         return
-    print(f"➡️ [GPIO] {ch} 핀({pin}) → {mode.upper()}")
-    GPIO.output(pin, GPIO.LOW if mode == "on" else GPIO.HIGH)
+    if gpio_handle is None:
+        print("❌ [lgpio] GPIO 핸들 미초기화")
+        return
+
+    value = 0 if mode == "on" else 1
+    lgpio.gpio_write(gpio_handle, pin, value)
+    print(f"➡️ [lgpio] {ch} 핀({pin}) → {'ON' if value == 0 else 'OFF'}")
+
 
 def tcpcontrol_multi(port_dict: dict, test_mode: bool = False) -> int:
     global relay_state
@@ -70,15 +87,13 @@ def tcpcontrol_multi(port_dict: dict, test_mode: bool = False) -> int:
                 for ch, mode in changes.items():
                     gpio_control(ch, mode)
 
-            # GPIO에서도 상태 비트 계산 동일하게 적용
             for category in relay_state:
                 for ch_info in relay_state[category].values():
                     if ch_info["state"]:
                         new_state |= (1 << ch_info["port"])
 
-            print(f"[GPIO] Raspberry Pi 릴레이 제어 완료 → 상태값: {bin(new_state)}")
+            print(f"[lgpio] Raspberry Pi 릴레이 제어 완료 → 상태값: {bin(new_state)}")
         else:
-            # TCP용 릴레이 비트 계산
             for category in relay_state:
                 for ch_info in relay_state[category].values():
                     if ch_info["state"]:
@@ -91,7 +106,6 @@ def tcpcontrol_multi(port_dict: dict, test_mode: bool = False) -> int:
                 0, relay_size, 1, new_state
             ])
 
-            # TCP 상태 동기화
             for category in relay_state:
                 for ch_name, ch_info in relay_state[category].items():
                     port = ch_info["port"]
@@ -114,6 +128,7 @@ def tcpcontrol_multi(port_dict: dict, test_mode: bool = False) -> int:
 
         send_state_data(relay_state)
         return
+
 
 def emergency_shutdown(mode: str, test_mode: bool = False):
     global relay_state
@@ -144,13 +159,12 @@ def emergency_shutdown(mode: str, test_mode: bool = False):
         for ch in relay_state.get(mode, {}):
             gpio_control(ch, "off")
 
-        # 상태 비트 계산
         for category in relay_state:
             for ch_info in relay_state[category].values():
                 if ch_info["state"]:
                     new_state |= (1 << ch_info["port"])
 
-        print(f"[GPIO] 🚨 Raspberry Pi 긴급 OFF 완료 → 상태값: {bin(new_state)}")
+        print(f"[lgpio] 🚨 Raspberry Pi 긴급 OFF 완료 → 상태값: {bin(new_state)}")
     else:
         packet = bytearray([
             0, 0, 0, 0, 0, 8,
@@ -168,6 +182,7 @@ def emergency_shutdown(mode: str, test_mode: bool = False):
 
     send_state_data(relay_state)
     return
+
 
 def send_state_data(relay_state=None):
     if relay_state is None:
