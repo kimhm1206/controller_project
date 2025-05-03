@@ -153,10 +153,12 @@ def emergency_shutdown(mode: str, test_mode: bool = False):
     for category in relay_state:
         for ch, ch_info in relay_state[category].items():
             port = ch_info["port"]
-            if ch_info["state"] and port not in target_ports:
-                new_state |= (1 << port)
+            if port in target_ports:
+                ch_info["state"] = 0  # 상태 OFF
+                # ✅ 여기선 OFF니까 비트 안 켬
             else:
-                ch_info["state"] = 0
+                if ch_info["state"]:  # 다른 건 기존대로 유지
+                    new_state |= (1 << port)
 
     if test_mode:
         print(f"[TEST] 🚨 {mode} 긴급 OFF → 상태값: {bin(new_state)}")
@@ -177,6 +179,8 @@ def emergency_shutdown(mode: str, test_mode: bool = False):
                 continue
             gpio_control(gpio_ch, "off")
 
+        # 비트 재계산 (OFF는 포함 안 함)
+        new_state = 0
         for category in relay_state:
             for ch_info in relay_state[category].values():
                 if ch_info["state"]:
@@ -199,7 +203,6 @@ def emergency_shutdown(mode: str, test_mode: bool = False):
             print(f"[TCP ERROR] 긴급 OFF 실패: {e}")
 
     send_state_data(relay_state)
-    return
 
 
 def send_state_data(relay_state=None):
