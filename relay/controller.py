@@ -145,20 +145,20 @@ def emergency_shutdown(mode: str, test_mode: bool = False):
     relay_type = config.get("relayboard_type", "4port")
     relay_size = 4 if relay_type == "4port" else 8
 
+    # OFF할 포트들 추출
     target_ports = [
         ch_info["port"] for ch_info in relay_state.get(mode, {}).values()
     ]
 
+    # 상태 비트 계산
     new_state = 0
     for category in relay_state:
         for ch, ch_info in relay_state[category].items():
             port = ch_info["port"]
             if port in target_ports:
-                ch_info["state"] = 0  # 상태 OFF
-                # ✅ 여기선 OFF니까 비트 안 켬
-            else:
-                if ch_info["state"]:  # 다른 건 기존대로 유지
-                    new_state |= (1 << port)
+                ch_info["state"] = 0  # 무조건 OFF
+            elif ch_info["state"]:
+                new_state |= (1 << port)
 
     if test_mode:
         print(f"[TEST] 🚨 {mode} 긴급 OFF → 상태값: {bin(new_state)}")
@@ -167,19 +167,27 @@ def emergency_shutdown(mode: str, test_mode: bool = False):
 
     if is_raspberry_pi():
         setup_rpi_gpio()
-        for ch, ch_info in relay_state.get(mode, {}).items():
-            port = ch_info["port"]
-            gpio_ch = None
-            for k, v in RASPBERRY_PI_PINS.items():
-                if int(k.replace("ch", "")) == port:
-                    gpio_ch = k
-                    break
-            if gpio_ch is None:
-                print(f"❌ [GPIO] 포트 {port} → ch 매핑 실패 (긴급 OFF)")
-                continue
-            gpio_control(gpio_ch, "off")
 
-        # 비트 재계산 (OFF는 포함 안 함)
+        if mode == "led":
+            # ✅ LED 모드일 땐 RASPBERRY_PI_PINS 전부 순회하며 OFF
+            print("💡 [lgpio] LED 모드 → 모든 GPIO 핀 OFF 처리")
+            for ch, pin in RASPBERRY_PI_PINS.items():
+                gpio_control(ch, "off")
+        else:
+            # ✅ 기존 방식 (relay_state에서 포트 매핑)
+            for ch, ch_info in relay_state.get(mode, {}).items():
+                port = ch_info["port"]
+                gpio_ch = None
+                for k, v in RASPBERRY_PI_PINS.items():
+                    if int(k.replace("ch", "")) == port:
+                        gpio_ch = k
+                        break
+                if gpio_ch is None:
+                    print(f"❌ [GPIO] 포트 {port} → ch 매핑 실패 (긴급 OFF)")
+                    continue
+                gpio_control(gpio_ch, "off")
+
+        # 비트 재계산
         new_state = 0
         for category in relay_state:
             for ch_info in relay_state[category].values():
@@ -187,7 +195,9 @@ def emergency_shutdown(mode: str, test_mode: bool = False):
                     new_state |= (1 << ch_info["port"])
 
         print(f"[lgpio] 🚨 Raspberry Pi 긴급 OFF 완료 → 상태값: {bin(new_state)}")
+
     else:
+        # ✅ TCP 릴레이용 패킷 전송
         packet = bytearray([
             0, 0, 0, 0, 0, 8,
             1, 15,
@@ -203,6 +213,7 @@ def emergency_shutdown(mode: str, test_mode: bool = False):
             print(f"[TCP ERROR] 긴급 OFF 실패: {e}")
 
     send_state_data(relay_state)
+
 
 
 def send_state_data(relay_state=None):
