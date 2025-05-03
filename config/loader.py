@@ -34,7 +34,6 @@ def load_config():
     try:
         with open(SETTING_PATH, "r", encoding="utf-8") as f:
             _cached_config = json.load(f)
-            print(SETTING_PATH)
     except Exception as e:
         print(f"❌ 설정 로드 실패: {e}")
         _cached_config = {}
