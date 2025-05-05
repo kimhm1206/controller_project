@@ -47,10 +47,10 @@ async def handle_manual_irrigation(ch):
                         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                         save_sensor_log(df, ch_key)
                     else:
-                        init_time = datetime.now().strftime("%Y-%m-%d 00:01:00")
+                        
                         df = pd.DataFrame([{
                             "realTime": now_time,
-                            "Time": init_time,
+                            "Time": now_time,
                             "svalue": 0,
                             "sumx": 0,
                             "dailysumx": 0,
@@ -105,10 +105,9 @@ async def handle_manual_irrigation(ch):
                 df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                 save_sensor_log(df, ch)
             else:
-                init_time = datetime.now().strftime("%Y-%m-%d 00:01:00")
                 df = pd.DataFrame([{
                     "realTime": now_time,
-                    "Time": init_time,
+                    "Time": now_time,
                     "svalue": 0,
                     "sumx": 0,
                     "dailysumx": 0,

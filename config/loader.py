@@ -29,7 +29,88 @@ def load_config():
 
     if not os.path.exists(SETTING_PATH):
         print(f"⚠️ 설정파일 없음 → 새로 생성: {SETTING_PATH}")
-        save_config({})  # 빈 설정 저장
+
+        default_config = {
+            "relayboard_type": "8port",
+            "sensor_ports": "com1",
+            "test_mode": True,
+            "irrigation_channels": {
+                "1": True,
+                "2": False,
+                "3": False,
+                "4": False
+            },
+            "led_channels": {
+                "1": False,
+                "2": False,
+                "3": False,
+                "4": False
+            },
+            "irrigationpanel": {
+                "control_mode": {
+                    "1": "timer",
+                    "2": "timer",
+                    "3": "timer",
+                    "4": "timer"
+                },
+                "relay_port_mapping": {
+                    "1": 0,
+                    "2": 1,
+                    "3": 2,
+                    "4": 3
+                },
+                "irrigation_time": {
+                    "1": 100,
+                    "2": 100,
+                    "3": 100,
+                    "4": 100
+                }
+            },
+            "ledpanel": {
+                "led_port_mapping": {
+                    "1": 4,
+                    "2": 5,
+                    "3": 6,
+                    "4": 7
+                },
+                "led_time": {
+                    "1": {"on": "08:00", "off": "17:00"},
+                    "2": {"on": "08:00", "off": "17:00"},
+                    "3": {"on": "08:00", "off": "20:00"},
+                    "4": {"on": "08:00", "off": "17:00"}
+                }
+            },
+            "time_control": {
+                "1": ["10:00", "12:00", "14:00", "16:00"],
+                "2": ["10:00", "12:00", "14:00", "16:00"],
+                "3": ["10:00", "12:00", "14:00", "16:00"],
+                "4": ["10:00", "12:00", "14:00", "16:00"]
+            },
+            "sensor_settings": {
+                "1": {
+                    "target": 150, "start_time": "09:00", "end_time": "17:30",
+                    "refresh_sec": 150, "nf_value": 68, "dtm": 1.15,
+                    "data_table": "", "modules": ""
+                },
+                "2": {
+                    "target": 150, "start_time": "09:00", "end_time": "17:30",
+                    "refresh_sec": 300, "nf_value": 68, "dtm": 1.15,
+                    "data_table": "", "modules": ""
+                },
+                "3": {
+                    "target": 150, "start_time": "09:00", "end_time": "17:30",
+                    "refresh_sec": 300, "nf_value": 68, "dtm": 1.15,
+                    "data_table": "", "modules": ""
+                },
+                "4": {
+                    "target": 150, "start_time": "09:00", "end_time": "17:30",
+                    "refresh_sec": 300, "nf_value": 68, "dtm": 1.15,
+                    "data_table": "", "modules": ""
+                }
+            }
+        }
+
+        save_config(default_config)
 
     try:
         with open(SETTING_PATH, "r", encoding="utf-8") as f:
@@ -39,6 +120,7 @@ def load_config():
         _cached_config = {}
 
     return _cached_config
+
 
 
 def get_config():
