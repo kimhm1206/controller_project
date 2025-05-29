@@ -20,8 +20,10 @@ for path in [DATA_DIR, LOG_DIR, SYSLOG_DIR]:
         os.makedirs(path)
         print(f"📂 폴더 생성됨: {path}")
 
+
 # 📦 내부 캐시 설정값
 _cached_config = {}
+
 
 def load_config():
     """setting.json을 읽어서 파싱된 dict 반환"""
@@ -120,7 +122,6 @@ def load_config():
         _cached_config = {}
 
     return _cached_config
-
 
 
 def get_config():
