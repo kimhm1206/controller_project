@@ -53,6 +53,7 @@ async def run_sensor_cycle():
         await reset_daily_state()
         
         return
+    
         
     sensor_settings = config.get("sensor_settings", {})
     irrigation_channels = config.get("irrigation_channels", {})
