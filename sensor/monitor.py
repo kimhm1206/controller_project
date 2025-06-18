@@ -3,6 +3,7 @@ from config.loader import load_config,save_config,LOG_DIR
 from datetime import datetime, timedelta
 from websocket.wsnotify import send_keepalive,send_logupdate,is_connected,send_message
 
+
 def get_next_schedule_time():
     now = datetime.now()
     base_minutes = [1, 16, 31, 46]
@@ -12,6 +13,7 @@ def get_next_schedule_time():
             return scheduled
     # 다음 시간으로 이월
     return (now + timedelta(hours=1)).replace(minute=1, second=0, microsecond=0)
+
 
 async def schedule_next_cycle():
     await send_keepalive()
@@ -29,17 +31,18 @@ async def schedule_next_cycle():
 
     # 다음 스케줄 재등록
     asyncio.create_task(schedule_next_cycle())
-        
+
+
 from datetime import datetime
 from scheduler.irrigation import irrigate
 from sensor.api import fetch_raw_sensor_data
-from sensor.sensor import process_raw_sensor_data,calculate_sumx,apply_conditional_filter
+from sensor.sensor import process_raw_sensor_data,calculate_sumx
 from sensor.logger import log_exists_for_today, save_sensor_log,load_existing_log
 from scheduler.reset import reset_daily_state
 import pandas as pd
 
 
-async def run_sensor_cycle(): 
+async def run_sensor_cycle():
     print(f"⏱️ 센서 루프 시작 - {datetime.now().strftime('%H:%M:%S')}")
     config = load_config()
     if not is_connected():      
@@ -53,13 +56,14 @@ async def run_sensor_cycle():
         await reset_daily_state()
         
         return
-    
-        
+
+
     sensor_settings = config.get("sensor_settings", {})
     irrigation_channels = config.get("irrigation_channels", {})
     control_modes = config["irrigationpanel"].get("control_mode", {})
     test_mode = config.get("test_mode", False)
     runbool = False
+    
     for ch, setting in sensor_settings.items():
         ch = str(ch)
         if not irrigation_channels.get(ch, False):
@@ -94,7 +98,7 @@ async def run_sensor_cycle():
             
             sfdata = process_raw_sensor_data(raw_module_data,setting)
             sfdata = calculate_sumx(sfdata, setting,start=start_time,end=end_time)
-            sfdata = apply_conditional_filter(sfdata)
+            # sfdata = apply_conditional_filter(sfdata)
             
             nowT = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             sfdata["realTime"] = nowT
@@ -116,8 +120,9 @@ async def run_sensor_cycle():
                 continue
             
             last_time = pd.to_datetime(old_log["Time"]).max()
-            one_hour_ago = last_time - timedelta(hours=1)
-            fetch_start = max(start_of_day,one_hour_ago)
+            # one_hour_ago = last_time - timedelta(hours=1)
+            # fetch_start = max(start_of_day,one_hour_ago)
+            fetch_start = start_of_day
             
             raw_module_data = await fetch_raw_sensor_data(setting, fetch_start, fetch_end)      
             
@@ -138,7 +143,7 @@ async def run_sensor_cycle():
             
             last_row = old_log.iloc[-1]  # Series 타입
             sfdata = calculate_sumx(new_df,setting,start=start_time,end=end_time,last_state=last_row)
-            sfdata = apply_conditional_filter(sfdata)
+            # sfdata = apply_conditional_filter(sfdata)
             
             nowT = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             sfdata["realTime"] = nowT
@@ -173,6 +178,7 @@ async def run_sensor_cycle():
     
 import os
     
+    
 async def get_test_data(data):
     file_path = os.path.join(LOG_DIR, "test", f"{data['ch']}ch_test.csv")
     config = load_config()
@@ -180,7 +186,6 @@ async def get_test_data(data):
     setting = sensor_settings.get(data['ch'], {})
 
     # 업데이트 값 적용
-    setting['dtm'] = data['dtm']
     setting['nf_value'] = data['nf']
     setting['target'] = data['goal']
 
@@ -217,7 +222,7 @@ async def get_test_data(data):
 
     # 4. 정렬 및 저장
     combined_df = combined_df.sort_values("Time")
-    combined_df = apply_conditional_filter(combined_df)
+    # combined_df = apply_conditional_filter(combined_df)
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     combined_df.to_csv(file_path, index=False, encoding="utf-8-sig")
     
