@@ -54,3 +54,20 @@ def load_existing_log(ch: str) -> pd.DataFrame:
         return pd.read_csv(file_path, parse_dates=["Time"])
     else:
         return pd.DataFrame(columns=["Time", "svalue", "sumx", "dailysumx", "action", "goal"])
+
+
+def save_weather_csv(data: dict):
+    if not data:
+        return
+
+    date_str = data["time"].split(" ")[0]
+    log_dir = os.path.join(LOG_DIR, "weather")
+    os.makedirs(log_dir, exist_ok=True)
+    file_path = os.path.join(log_dir, f"{date_str}.csv")
+
+    write_header = not os.path.exists(file_path)
+    with open(file_path, "a", newline="", encoding="utf-8-sig") as f:
+        writer = csv.writer(f)
+        if write_header:
+            writer.writerow(["Time", "CO2", "Temp", "Humi", "Lux"])
+        writer.writerow([data["time"], data["CO2"], data["Temp"], data["Humi"], data["Lux"]])

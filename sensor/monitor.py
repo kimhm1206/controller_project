@@ -36,8 +36,8 @@ async def schedule_next_cycle():
 from datetime import datetime
 from scheduler.irrigation import irrigate
 from sensor.api import fetch_raw_sensor_data
-from sensor.sensor import process_raw_sensor_data,calculate_sumx
-from sensor.logger import log_exists_for_today, save_sensor_log,load_existing_log
+from sensor.sensor import process_raw_sensor_data,calculate_sumx,read_weather_sensor_packet
+from sensor.logger import log_exists_for_today, save_sensor_log,load_existing_log,save_weather_csv
 from scheduler.reset import reset_daily_state
 import pandas as pd
 
@@ -172,6 +172,11 @@ async def run_sensor_cycle():
             merged_log = merged_log.sort_values("Time").reset_index(drop=True)
 
             save_sensor_log(merged_log, ch)  # ✅ 로그 저장
+            
+            port = config.get("sensor_ports")  # 예: "COM3"
+            weather_data = read_weather_sensor_packet(port)
+            save_weather_csv(weather_data)
+            
             runbool = True
     if runbool:
         await send_logupdate()

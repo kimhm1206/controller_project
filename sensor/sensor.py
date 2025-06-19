@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import numpy as np
 from scipy.signal import savgol_filter
-
+import serial
 
 def apply_ema_filter(series: pd.Series, alpha: float = 0.1) -> pd.Series:
     ema = []
@@ -344,3 +344,55 @@ def compute_corrected_svalue_per_channel(series: pd.Series) -> pd.Series:
 #     final_df = final_df.sort_values("Time").reset_index(drop=True)
 
 #     return final_df
+
+def read_weather_sensor_packet(port_name, baudrate=9600, timeout=2):
+    try:
+        ser = serial.Serial(port_name, baudrate=baudrate, timeout=timeout)
+        
+        # 보낼 명령 (MATLAB의 hex data + checksum)
+        data = bytearray([
+            0x02, ord('0'), 0x52, 0x58, 0x5A, 0x54, 0x48, 0x4C, 0x03
+        ])
+        
+        # XOR 체크섬 추가
+        xor_value = 0
+        for b in data:
+            xor_value ^= b
+        data.append(xor_value)
+
+        # 전송
+        ser.write(data)
+
+        # 응답 수신 (28바이트)
+        response = ser.read(28)
+
+        # 응답 길이 검증
+        if len(response) < 28:
+            print("⚠ 응답 길이가 짧습니다.")
+            return None
+
+        response_str = response.decode("utf-8", errors="ignore")
+        print(f"📥 수신 문자열: {response_str}")
+
+        # 값 추출 (MATLAB과 동일 위치)
+        co2 = int(response_str[5:9])
+        temp_val = int(response_str[11:15]) / 10
+        temp = temp_val if response_str[10] == '1' else -temp_val
+        humi = int(response_str[16:20]) / 10
+        lux = int(response_str[21:26])
+
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return {
+            "time": now,
+            "CO2": co2,
+            "Temp": temp,
+            "Humi": humi,
+            "Lux": lux
+        }
+
+    except Exception as e:
+        print(f"❌ 센서 통신 오류: {e}")
+        return None
+    finally:
+        if 'ser' in locals():
+            ser.close()
