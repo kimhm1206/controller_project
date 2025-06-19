@@ -173,11 +173,13 @@ async def run_sensor_cycle():
 
             save_sensor_log(merged_log, ch)  # ✅ 로그 저장
             
-            port = config.get("sensor_ports")  # 예: "COM3"
-            weather_data = read_weather_sensor_packet(port)
-            save_weather_csv(weather_data)
-            
             runbool = True
+            
+        port = config.get("sensor_ports")  # 예: "COM3"
+        weather_data = read_weather_sensor_packet(port)
+        print("weather_data =", weather_data)
+        save_weather_csv(weather_data)
+        
     if runbool:
         await send_logupdate()
     
