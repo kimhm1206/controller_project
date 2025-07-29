@@ -36,6 +36,16 @@ def load_config():
             "relayboard_type": "8port",
             "sensor_ports": "com1",
             "test_mode": True,
+            "irrigation_mix":False,
+            "irrigation_mix_port":0,
+            "area_control":False,
+            "area_infor":{
+              "fan":0,
+              "open":1,
+              "close":2,
+              "address":"192.168.5.139",
+              "port":502  
+            },
             "irrigation_channels": {
                 "1": True,
                 "2": False,
