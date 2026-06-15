@@ -16,21 +16,19 @@ def get_next_schedule_time():
 
 
 async def schedule_next_cycle():
-    await send_keepalive()
-    next_time = get_next_schedule_time()
-    wait_sec = (next_time - datetime.now()+timedelta(seconds=1)).total_seconds()
-    # print(f"⏳ 다음 센서 주기 예약: {next_time.strftime('%H:%M:%S')} (in {int(wait_sec)}초)")
-    
-    await asyncio.sleep(wait_sec)
-    
-    # 센서 루프 실행
-    await run_sensor_cycle()
+    while True:
+        await send_keepalive()
+        next_time = get_next_schedule_time()
+        wait_sec = (next_time - datetime.now() + timedelta(seconds=1)).total_seconds()
+        wait_sec = max(wait_sec, 0)
+        # print(f"⏳ 다음 센서 주기 예약: {next_time.strftime('%H:%M:%S')} (in {int(wait_sec)}초)")
 
-    # Django 서버에 keepalive 신호 전송
-    # await send_keepalive()
+        await asyncio.sleep(wait_sec)
 
-    # 다음 스케줄 재등록
-    asyncio.create_task(schedule_next_cycle())
+        try:
+            await run_sensor_cycle()
+        except Exception as e:
+            print(f"❌ 센서 루프 예외 발생, 다음 주기는 계속 예약됨: {e}", flush=True)
 
 
 from datetime import datetime
