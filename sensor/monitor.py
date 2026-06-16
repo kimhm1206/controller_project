@@ -16,21 +16,19 @@ def get_next_schedule_time():
 
 
 async def schedule_next_cycle():
-    await send_keepalive()
-    next_time = get_next_schedule_time()
-    wait_sec = (next_time - datetime.now()+timedelta(seconds=1)).total_seconds()
-    # print(f"⏳ 다음 센서 주기 예약: {next_time.strftime('%H:%M:%S')} (in {int(wait_sec)}초)")
-    
-    await asyncio.sleep(wait_sec)
-    
-    # 센서 루프 실행
-    await run_sensor_cycle()
+    while True:
+        await send_keepalive()
+        next_time = get_next_schedule_time()
+        wait_sec = (next_time - datetime.now() + timedelta(seconds=1)).total_seconds()
+        wait_sec = max(wait_sec, 0)
+        # print(f"⏳ 다음 센서 주기 예약: {next_time.strftime('%H:%M:%S')} (in {int(wait_sec)}초)")
 
-    # Django 서버에 keepalive 신호 전송
-    # await send_keepalive()
+        await asyncio.sleep(wait_sec)
 
-    # 다음 스케줄 재등록
-    asyncio.create_task(schedule_next_cycle())
+        try:
+            await run_sensor_cycle()
+        except Exception as e:
+            print(f"❌ 센서 루프 예외 발생, 다음 주기는 계속 예약됨: {e}", flush=True)
 
 
 from datetime import datetime
@@ -45,6 +43,11 @@ import pandas as pd
 async def run_sensor_cycle():
     print(f"⏱️ 센서 루프 시작 - {datetime.now().strftime('%H:%M:%S')}")
     config = load_config()
+    master = config.get("master", {})
+    if not master.get("external_sensor_enabled", True):
+        print("⏸️ 외부 센서 사용 안함 - 센서 루프 건너뜀", flush=True)
+        return
+
     if not is_connected():      
         config["irrigationpanel"]["control_mode"]["1"] = "timer"
         config["irrigationpanel"]["control_mode"]["2"] = "timer"

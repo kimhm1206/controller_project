@@ -1,0 +1,9 @@
+APScheduler
+aiohttp
+cryptography
+numpy
+pandas
+pyserial
+requests
+scipy
+websockets
