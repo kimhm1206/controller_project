@@ -31,6 +31,9 @@ SYSLOG_DIR = os.path.join(USER_DOCS, "systemlog")
 SETTING_PATH = os.path.join(DATA_DIR, "setting.json")
 SETTING_LOCK_PATH = f"{SETTING_PATH}.lock"
 SETTING_BACKUP_PATH = f"{SETTING_PATH}.bak"
+DEFAULT_SETTING_TEMPLATE_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "scripts", "setting.json")
+)
 
 # 📂 폴더 생성 (최초 실행 시)
 for path in [DATA_DIR, LOG_DIR, SYSLOG_DIR]:
@@ -40,6 +43,12 @@ for path in [DATA_DIR, LOG_DIR, SYSLOG_DIR]:
 
 
 BASE_DEFAULT_CONFIG = {
+    "master": {
+        "relay_control_type": "tcp",
+        "external_sensor_enabled": True,
+        "extra_control_enabled": False,
+        "site_ids": [],
+    },
     "relayboard_type": "8port",
     "relay_output_mode": "tcp",
     "tcp_relay": {
@@ -162,9 +171,26 @@ def _legacy_relay_output_mode():
     return "gpio" if platform.system() == "Linux" else "tcp"
 
 
+def _load_default_template():
+    try:
+        with open(DEFAULT_SETTING_TEMPLATE_PATH, "r", encoding="utf-8") as f:
+            template = json.load(f)
+        if isinstance(template, dict):
+            return _deep_merge(BASE_DEFAULT_CONFIG, template)
+    except Exception as exc:
+        print(f"⚠ 기본 설정 템플릿 로드 실패: {DEFAULT_SETTING_TEMPLATE_PATH} / {exc}")
+
+    return copy.deepcopy(BASE_DEFAULT_CONFIG)
+
+
 def _default_config():
-    config = copy.deepcopy(BASE_DEFAULT_CONFIG)
-    config["relay_output_mode"] = _legacy_relay_output_mode()
+    config = _load_default_template()
+    master = config.get("master") if isinstance(config.get("master"), dict) else {}
+    relay_mode = master.get("relay_control_type") or config.get("relay_output_mode")
+    if relay_mode not in {"tcp", "gpio"}:
+        relay_mode = _legacy_relay_output_mode()
+    config.setdefault("master", {})["relay_control_type"] = relay_mode
+    config["relay_output_mode"] = relay_mode
     return config
 
 
@@ -181,17 +207,51 @@ def _deep_merge(default, override):
     return result
 
 
+def _coerce_site_ids(value):
+    if isinstance(value, list):
+        raw_items = value
+    elif isinstance(value, str):
+        raw_items = value.replace(",", "\n").splitlines()
+    else:
+        raw_items = []
+
+    site_ids = []
+    for item in raw_items:
+        site_id = str(item).strip()
+        if site_id and site_id not in site_ids:
+            site_ids.append(site_id)
+    return site_ids
+
+
 def normalize_config(config):
     if not isinstance(config, dict):
         raise ValueError("setting.json root must be an object")
 
     normalized = _deep_merge(_default_config(), config)
 
+    raw_master = config.get("master") if isinstance(config.get("master"), dict) else {}
+    master = normalized.get("master")
+    if not isinstance(master, dict):
+        master = {}
+
+    relay_control_type = raw_master.get("relay_control_type")
+    if relay_control_type not in {"tcp", "gpio"}:
+        relay_control_type = normalized.get("relay_output_mode")
+    if relay_control_type not in {"tcp", "gpio"}:
+        relay_control_type = _legacy_relay_output_mode()
+
+    master["relay_control_type"] = relay_control_type
+    master["external_sensor_enabled"] = bool(raw_master.get("external_sensor_enabled", master.get("external_sensor_enabled", True)))
+    master["extra_control_enabled"] = bool(raw_master.get(
+        "extra_control_enabled",
+        bool(normalized.get("irrigation_mix")) or bool(normalized.get("area_control")),
+    ))
+    master["site_ids"] = _coerce_site_ids(raw_master.get("site_ids", master.get("site_ids", [])))
+    normalized["master"] = master
+    normalized["relay_output_mode"] = relay_control_type
+
     if normalized.get("relayboard_type") not in {"4port", "8port"}:
         normalized["relayboard_type"] = "8port"
-
-    if normalized.get("relay_output_mode") not in {"tcp", "gpio"}:
-        normalized["relay_output_mode"] = _legacy_relay_output_mode()
 
     tcp_relay = normalized.get("tcp_relay")
     if not isinstance(tcp_relay, dict):

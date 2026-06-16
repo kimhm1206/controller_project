@@ -43,6 +43,11 @@ import pandas as pd
 async def run_sensor_cycle():
     print(f"⏱️ 센서 루프 시작 - {datetime.now().strftime('%H:%M:%S')}")
     config = load_config()
+    master = config.get("master", {})
+    if not master.get("external_sensor_enabled", True):
+        print("⏸️ 외부 센서 사용 안함 - 센서 루프 건너뜀", flush=True)
+        return
+
     if not is_connected():      
         config["irrigationpanel"]["control_mode"]["1"] = "timer"
         config["irrigationpanel"]["control_mode"]["2"] = "timer"
